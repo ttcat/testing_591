@@ -1,0 +1,3 @@
+[submodule "vendor/openaustralia/scraperwiki"]
+	path = vendor/openaustralia/scraperwiki
+	url = https://github.com/openaustralia/scraperwiki-php.git
