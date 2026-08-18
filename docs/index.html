@@ -37,10 +37,10 @@
           <span>全聯 6 分鐘</span>
         </div>
       </div>
-      <div class="hero-media placeholder-photo">
-        <div class="photo-label">Hero photo placeholder</div>
-        <div class="photo-note">建議放：5樓最寬、最亮的客廳主圖</div>
-      </div>
+      <figure class="hero-media photo-frame">
+        <img src="./assets/images/5f-living-view-07.jpg" alt="5樓客餐廳實景，客廳可連接餐桌與廚房" fetchpriority="high" />
+        <figcaption class="photo-caption">5F 客餐廳實景</figcaption>
+      </figure>
     </section>
 
     <section class="section-pad value-strip" aria-label="主要特色">
@@ -82,9 +82,18 @@
           <div class="feature-card"><span>🐈</span><strong>可養貓</strong><p>不用偷偷養。</p></div>
         </div>
         <div class="gallery-grid">
-          <div class="placeholder-photo large"><span>5F 客廳實景</span></div>
-          <div class="placeholder-photo"><span>5F 廚房＋洗乾衣</span></div>
-          <div class="placeholder-photo"><span>5F 房間</span></div>
+          <figure class="photo-frame large">
+            <img src="./assets/images/5f-living-view-01.jpg" alt="5樓寬敞客廳與整排窗戶實景" loading="lazy" />
+            <figcaption class="photo-caption">客廳實景</figcaption>
+          </figure>
+          <figure class="photo-frame">
+            <img src="./assets/images/5f-kitchen-laundry.jpg" alt="5樓紅色廚房與 LG 洗衣乾衣設備" loading="lazy" />
+            <figcaption class="photo-caption">廚房＋洗乾衣</figcaption>
+          </figure>
+          <figure class="photo-frame">
+            <img src="./assets/images/5f-bedroom-1-view-01.jpg" alt="5樓有窗臥室實景" loading="lazy" />
+            <figcaption class="photo-caption">有窗房間</figcaption>
+          </figure>
         </div>
       </article>
 
@@ -123,11 +132,17 @@
       </div>
       <div class="comparison-card">
         <div class="comparison-stage">
-          <div class="placeholder-photo compare-photo real"><span>真實屋況</span></div>
-          <div class="placeholder-photo compare-photo staged"><span>AI 軟裝示意</span></div>
+          <div class="compare-photo real">
+            <img src="./assets/images/5f-living-view-07.jpg" alt="5樓客餐廳真實屋況" loading="lazy" />
+            <span class="compare-badge">真實屋況</span>
+          </div>
+          <div class="compare-photo staged">
+            <img src="./assets/images/5f-ai-staging-living-01.png" alt="同角度的5樓客餐廳 AI 軟裝示意" loading="lazy" />
+            <span class="compare-badge">AI 軟裝示意</span>
+          </div>
           <input id="compareRange" type="range" min="0" max="100" value="50" aria-label="真實屋況與AI軟裝比較" />
         </div>
-        <p class="caption">拖曳滑桿比較。正式版會放同角度真實照與 AI 示意。</p>
+        <p class="caption">拖曳滑桿比較同角度照片。AI 圖僅示意可移動家具與軟裝配置。</p>
       </div>
     </section>
 
