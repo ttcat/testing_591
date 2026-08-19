@@ -14,11 +14,16 @@ From the repository root:
 
 ```bash
 python3 video/render.py
+python3 video/render_horizontal.py
 ```
 
-The default output is:
+The default outputs are:
 
 `docs/assets/video/5f-real-vs-ai-vertical.mp4`
 
+`docs/assets/video/5f-real-vs-ai-horizontal.mp4`
+
 Room 2B intentionally uses a crossfade because the AI image has composition
-drift. Every other scene uses a shared center crop and an animated divider.
+drift. Every other scene uses an animated divider. The vertical renderer uses
+a shared center crop; the horizontal renderer preserves each complete 16:9
+panorama instead.
