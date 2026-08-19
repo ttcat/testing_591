@@ -32,7 +32,6 @@ HEIGHT = 1080
 NORMAL_DURATION = 3.4
 REAL_HOLD = 0.8
 REVEAL_DURATION = 1.8
-SPECIAL_DURATION = 3.2
 INTRO_DURATION = 1.2
 OUTRO_DURATION = 1.8
 
@@ -47,11 +46,6 @@ def full_panorama_pair(real_path: Path, ai_path: Path) -> tuple[Image.Image, Ima
         ImageOps.pad(real, (WIDTH, HEIGHT), Image.Resampling.LANCZOS, color=OFF_WHITE),
         ImageOps.pad(ai, (WIDTH, HEIGHT), Image.Resampling.LANCZOS, color=OFF_WHITE),
     )
-
-
-def full_panorama(path: Path) -> Image.Image:
-    source = Image.open(path).convert("RGB")
-    return ImageOps.pad(source, (WIDTH, HEIGHT), Image.Resampling.LANCZOS, color=OFF_WHITE)
 
 
 def add_gradient(layer: Image.Image, *, top: bool) -> None:
@@ -124,16 +118,6 @@ def make_scene_ui(scene, index: int) -> Image.Image:
         anchor="ld",
     )
 
-    if scene.mode == "crossfade":
-        rounded_label(
-            draw,
-            (WIDTH // 2, HEIGHT - 48),
-            "AI 構圖略有偏移｜以淡入呈現",
-            font(24),
-            fill=(29, 28, 25, 220),
-            text_fill=(248, 245, 238, 255),
-            anchor="md",
-        )
     return layer
 
 
@@ -257,40 +241,57 @@ def render_slider_scene(
     run(command)
 
 
-def render_crossfade_scene(real: Path, ai: Path, ui: Path, output: Path, crf: int) -> None:
-    real_hold = 1.2
-    crossfade = 0.6
-    ai_hold = 1.4
+def add_music(video: Path, music: Path, output: Path) -> None:
+    duration = float(probe(video)["format"]["duration"])
+    fade_out_start = max(0.0, duration - 1.8)
     filters = (
-        f"[0:v]trim=duration={real_hold + crossfade},setpts=PTS-STARTPTS,format=rgba[real];"
-        f"[1:v]trim=duration={crossfade + ai_hold},setpts=PTS-STARTPTS,format=rgba[ai];"
-        f"[real][ai]xfade=transition=fade:duration={crossfade}:offset={real_hold}[mix];"
-        f"[2:v]trim=duration={SPECIAL_DURATION},setpts=PTS-STARTPTS,format=rgba[ui];"
-        f"[mix][ui]overlay=x=0:y=0:shortest=1,"
-        f"fade=t=in:st=0:d=0.12:color=0x{CHARCOAL[1:]},"
-        f"fade=t=out:st={SPECIAL_DURATION - 0.25}:d=0.25:color=0x{CHARCOAL[1:]},"
-        "format=yuv420p[out]"
+        f"[1:a]atrim=duration={duration:.3f},asetpts=PTS-STARTPTS,"
+        "loudnorm=I=-18:LRA=9:TP=-2,"
+        f"afade=t=in:st=0:d=1.2,afade=t=out:st={fade_out_start:.3f}:d=1.8[audio]"
     )
-    command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y"]
-    for source in (real, ai, ui):
-        command.extend(["-loop", "1", "-framerate", str(FPS), "-i", str(source)])
-    command.extend(
+    run(
         [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-stats",
+            "-y",
+            "-i",
+            str(video),
+            "-stream_loop",
+            "-1",
+            "-i",
+            str(music),
             "-filter_complex",
             filters,
             "-map",
-            "[out]",
+            "0:v:0",
+            "-map",
+            "[audio]",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
             "-t",
-            str(SPECIAL_DURATION),
-            *encoder_args(crf),
+            f"{duration:.3f}",
+            "-movflags",
+            "+faststart",
             str(output),
         ]
     )
-    run(command)
 
 
-def render(output: Path, crf: int) -> None:
+def render(output: Path, crf: int, music: Path | None) -> None:
     require_tools()
+    if music is not None and not music.exists():
+        raise FileNotFoundError(f"Music file not found: {music}")
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="testing-591-horizontal-") as temporary:
@@ -310,11 +311,7 @@ def render(output: Path, crf: int) -> None:
         for index, scene in enumerate(SCENES, start=1):
             real_path = ASSET_ROOT / scene.real
             ai_path = ASSET_ROOT / scene.ai
-            if scene.mode == "slider":
-                real_image, ai_image = full_panorama_pair(real_path, ai_path)
-            else:
-                real_image = full_panorama(real_path)
-                ai_image = full_panorama(ai_path)
+            real_image, ai_image = full_panorama_pair(real_path, ai_path)
 
             real_frame = work / f"scene-{index:02d}-real.png"
             ai_frame = work / f"scene-{index:02d}-ai.png"
@@ -324,12 +321,8 @@ def render(output: Path, crf: int) -> None:
             make_scene_ui(scene, index).save(ui_frame, optimize=True)
 
             segment = work / f"segment-{index:02d}.mp4"
-            treatment = "crossfade" if scene.mode == "crossfade" else "slider"
-            print(f"[{index + 1:02d}/12] Rendering {scene.title} ({treatment}, full panorama)", flush=True)
-            if scene.mode == "crossfade":
-                render_crossfade_scene(real_frame, ai_frame, ui_frame, segment, crf)
-            else:
-                render_slider_scene(real_frame, ai_frame, ui_frame, divider, segment, crf)
+            print(f"[{index + 1:02d}/12] Rendering {scene.title} (slider, full panorama)", flush=True)
+            render_slider_scene(real_frame, ai_frame, ui_frame, divider, segment, crf)
             segments.append(segment)
 
         outro = work / "outro.png"
@@ -344,7 +337,7 @@ def render(output: Path, crf: int) -> None:
             "".join(f"file '{segment.as_posix()}'\n" for segment in segments),
             encoding="utf-8",
         )
-        temporary_output = output.with_suffix(".rendering.mp4")
+        silent_output = output.with_suffix(".silent.mp4")
         print("[12/12] Joining and optimizing horizontal MP4", flush=True)
         run(
             [
@@ -364,10 +357,17 @@ def render(output: Path, crf: int) -> None:
                 "copy",
                 "-movflags",
                 "+faststart",
-                str(temporary_output),
+                str(silent_output),
             ]
         )
-        os.replace(temporary_output, output)
+        if music is None:
+            os.replace(silent_output, output)
+        else:
+            music_output = output.with_suffix(".music.mp4")
+            print(f"Adding background music: {music.name}", flush=True)
+            add_music(silent_output, music, music_output)
+            os.replace(music_output, output)
+            silent_output.unlink(missing_ok=True)
 
     metadata = probe(output)
     duration = float(metadata["format"]["duration"])
@@ -381,8 +381,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--crf", type=int, default=20, choices=range(16, 29))
+    parser.add_argument("--music", type=Path, help="Optional licensed background-music file")
     args = parser.parse_args()
-    render(args.output.resolve(), args.crf)
+    music = args.music.resolve() if args.music else None
+    render(args.output.resolve(), args.crf, music)
 
 
 if __name__ == "__main__":
